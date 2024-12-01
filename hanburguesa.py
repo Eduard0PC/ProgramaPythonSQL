@@ -2,10 +2,53 @@ import tkinter as tk
 from tkinter import ttk, messagebox  # Para mostrar mensajes de error
 from PIL import Image, ImageTk  # Pillow para manejar imágenes avanzadas
 import oracledb
+oracledb.init_oracle_client() #inicializar la tabla
 
 # Función para mostrar un mensaje de error
 def mostrar_error(mensaje):
     messagebox.showerror("Error", mensaje)
+    
+#Obtener coneccion a la base
+def obtener_conexion():
+    try:
+        conexion = oracledb.connect(
+            user='SYSTEM',
+            password='108310',
+            dsn='localhost/xe'
+        )
+        return conexion
+    except oracledb.DatabaseError as err:
+        messagebox.showerror("Error", f"Error de conexión a la base de datos: {err}")
+        return None
+
+# Ventana de inicio de sesión
+ventana_login = tk.Tk()
+ventana_login.title("Inicio de Sesión")
+ventana_login.geometry("300x200")
+ventana_login.resizable(False, False)
+
+# Etiquetas y campos de entrada
+tk.Label(ventana_login, text="Usuario:").pack(pady=5)
+entrada_usuario = tk.Entry(ventana_login, width=30)
+entrada_usuario.pack(pady=5)
+
+tk.Label(ventana_login, text="Contraseña:").pack(pady=5)
+entrada_contrasena = tk.Entry(ventana_login, show="*", width=30)
+entrada_contrasena.pack(pady=5)
+
+# Función para validar las credenciales
+def validar_credenciales():
+    usuario = entrada_usuario.get()
+    contrasena = entrada_contrasena.get()
+    if usuario == "admin" and contrasena == "1234":  # Credenciales predeterminadas
+        abrir_ventana_principal()
+    else:
+        mostrar_error("Usuario o contraseña incorrectos")
+
+# Botón de inicio de sesión
+tk.Button(ventana_login, text="Iniciar Sesión", command=validar_credenciales).pack(pady=20)
+
+
 
 # Función para abrir la ventana principal después del inicio de sesión exitoso
 def abrir_ventana_principal():
@@ -37,8 +80,8 @@ def abrir_ventana_principal():
         tk.Label(nueva_ventana, text="TOTAL DEL PEDIDO").pack(pady=5)
         tk.Entry(nueva_ventana, width=30).pack(pady=5)
         
+        tk.Button(nueva_ventana, text="VER PEDIDOS EN CURSO", command=abrir_ventas).pack(pady=20)
         tk.Button(nueva_ventana, text="Cerrar", command=nueva_ventana.destroy).pack(pady=20)
-        tk.Button(nueva_ventana, text="PEDIDOS", command=abrir_ventas).pack(pady=20)
         nueva_ventana.mainloop()
 
     # Función para abrir la ventana de Insumos
@@ -97,34 +140,7 @@ def abrir_ventana_principal():
 
     ventana.mainloop()
 
-# Ventana de inicio de sesión
-ventana_login = tk.Tk()
-ventana_login.title("Inicio de Sesión")
-ventana_login.geometry("300x200")
-ventana_login.resizable(False, False)
-
-# Etiquetas y campos de entrada
-tk.Label(ventana_login, text="Usuario:").pack(pady=5)
-entrada_usuario = tk.Entry(ventana_login, width=30)
-entrada_usuario.pack(pady=5)
-
-tk.Label(ventana_login, text="Contraseña:").pack(pady=5)
-entrada_contrasena = tk.Entry(ventana_login, show="*", width=30)
-entrada_contrasena.pack(pady=5)
-
-# Función para validar las credenciales
-def validar_credenciales():
-    usuario = entrada_usuario.get()
-    contrasena = entrada_contrasena.get()
-    if usuario == "admin" and contrasena == "1234":  # Credenciales predeterminadas
-        abrir_ventana_principal()
-    else:
-        mostrar_error("Usuario o contraseña incorrectos")
-
-# Botón de inicio de sesión
-tk.Button(ventana_login, text="Iniciar Sesión", command=validar_credenciales).pack(pady=20)
-
-oracledb.init_oracle_client() #inicializar la tabla
+#VENTANAS DE VENTAS
 def abrir_ventas():
     # Crear nueva ventana
     nueva_ventana = tk.Tk()
@@ -155,18 +171,11 @@ def abrir_ventas():
     tree.configure(yscroll=scrollbar.set)
     scrollbar.pack(side="right", fill="y")
     
-    # Función para cargar los datos desde la base de datos
+    # Función para cargar los datos desde la base de datos en ventanda de ventas
     def cargar_datos():
-        try:
-            # Conectar a la base de datos
-            conexion = oracledb.connect(
-                user='SYSTEM',
-                password='108310',
-                dsn='localhost/xe'
-            )
-        except oracledb.DatabaseError as err:
-            messagebox.showerror("Error", f"Error de conexión a la base de datos: {err}")
-            return
+        conexion = obtener_conexion()
+        if conexion is None:
+            return  
         
         try:
             cursor = conexion.cursor()
@@ -182,13 +191,51 @@ def abrir_ventas():
         finally:
             conexion.close()
     
+    #funcion para eliminar elementos de ventas
+    def eliminar_fila():
+        try:
+            # Obtener el ID de la fila seleccionada
+            seleccion = tree.selection()
+            if not seleccion:
+                messagebox.showwarning("Advertencia", "Por favor, selecciona una fila para eliminar.")
+                return
+            
+            item = tree.item(seleccion)
+            valores = item['values']
+            id_pedido = valores[0]  # Obtener el ID del pedido
+            
+            conexion = obtener_conexion()
+            if conexion is None:
+                return  
+            # Eliminar de la base de datos
+            try:
+                cursor = conexion.cursor()
+                cursor.execute("DELETE FROM HR.PedidoDetalles WHERE id_pedido = :1", (id_pedido,))
+                conexion.commit()
+
+            except oracledb.DatabaseError as err:
+                messagebox.showerror("Error", f"Error al eliminar el registro: {err}")
+                return
+            finally:
+                conexion.close()
+            
+            # Eliminar la fila del Treeview
+            tree.delete(seleccion)
+            messagebox.showinfo("Éxito", f"Registro con ID {id_pedido} eliminado correctamente.")
+        
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo eliminar la fila: {e}")
     # Cargar los datos al abrir la ventana
     cargar_datos()
     
-    # Botón para cerrar la ventana
+    #Boton para borrar registro de ventas
+    boton_eliminar = tk.Button(nueva_ventana, text="Eliminar Pedido", font=("Arial", 14), command=eliminar_fila)
+    boton_eliminar.pack(pady=10)
+    
     def cerrar_ventana():
         nueva_ventana.destroy()
-    
+        
+    # Botón para cerrar la ventana
     boton_cerrar = tk.Button(nueva_ventana, text="Cerrar", font=("Arial", 14), command=cerrar_ventana)
     boton_cerrar.pack(pady=10)
     
