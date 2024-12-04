@@ -62,27 +62,119 @@ def abrir_ventana_principal():
     ventana.geometry(f"400x400+{pos_x}+{pos_y}")
     ventana.resizable(False, False)
 
-    # Función para abrir la ventana de Ventas
+# Función para abrir la ventana de Ventas
     def ventana_ventas():
         pos_x = ventana.winfo_x()
         pos_y = ventana.winfo_y()
-        
+    
         nueva_ventana = tk.Tk()
         nueva_ventana.title("Ventas")
-        nueva_ventana.geometry(f"400x400+{pos_x}+{pos_y}")
-        
-        tk.Label(nueva_ventana, text="ID PEDIDO").pack(pady=5)
-        tk.Entry(nueva_ventana, width=30).pack(pady=5)
-        tk.Label(nueva_ventana, text="NOMBRE DEL CLIENTE").pack(pady=5)
-        tk.Entry(nueva_ventana, width=30).pack(pady=5)
+        nueva_ventana.geometry(f"400x500+{pos_x}+{pos_y}")
+    
+        tk.Label(nueva_ventana, text="ID DEL PRODUCTO").pack(pady=5)
+        entrada_id_producto = tk.Entry(nueva_ventana, width=30)
+        entrada_id_producto.pack(pady=5)
+    
+        tk.Label(nueva_ventana, text="CANTIDAD DE ALIMENTO").pack(pady=5)
+        entrada_cantidad = tk.Entry(nueva_ventana, width=30)
+        entrada_cantidad.pack(pady=5)
+    
         tk.Label(nueva_ventana, text="DIRECCIÓN").pack(pady=5)
-        tk.Entry(nueva_ventana, width=30).pack(pady=5)
-        tk.Label(nueva_ventana, text="TOTAL DEL PEDIDO").pack(pady=5)
-        tk.Entry(nueva_ventana, width=30).pack(pady=5)
-        
+        entrada_direccion = tk.Entry(nueva_ventana, width=30)
+        entrada_direccion.pack(pady=5)
+    
+        tk.Label(nueva_ventana, text="NOMBRE DEL CLIENTE").pack(pady=5)
+        entrada_cliente = tk.Entry(nueva_ventana, width=30)
+        entrada_cliente.pack(pady=5)
+    
+        def insertar_pedido():
+            """
+            Inserta los datos ingresados en la tabla 'PedidoDetalles' y luego en 'Pedidos'.
+            """
+            id_producto = entrada_id_producto.get()
+            cantidad = entrada_cantidad.get()
+            direccion = entrada_direccion.get()
+            nombre_cliente = entrada_cliente.get()
+
+            # Validar entradas
+            if not id_producto or not cantidad or not direccion or not nombre_cliente:
+                mostrar_error("Por favor, completa todos los campos.")
+                return
+
+            try:
+                cantidad = int(cantidad)
+                if cantidad <= 0:
+                    raise ValueError("La cantidad debe ser un número positivo.")
+            except ValueError as e:
+                mostrar_error(f"Error en el campo 'Cantidad': {e}")
+                return
+
+            # Conexión a la base de datos
+            conexion = obtener_conexion()
+            if conexion is None:
+                return
+
+            try:
+                cursor = conexion.cursor()
+
+                # Generar un nuevo ID para 'PedidoDetalles'
+                cursor.execute("SELECT 'P'||LPAD(TO_CHAR(NVL(MAX(TO_NUMBER(SUBSTR(id_pedido, 2))), 0) + 1), 11, '0') FROM HR.PedidoDetalles")
+                nuevo_id_pedido = cursor.fetchone()[0]
+
+                # Insertar en la tabla 'PedidoDetalles'
+                cursor.execute("""
+                    INSERT INTO HR.PedidoDetalles (id_pedido, fecha_pedido, hora_pedido)
+                    VALUES (:id_pedido, TO_DATE('2024-12-01', 'YYYY-MM-DD'), SYSTIMESTAMP)
+                """, {"id_pedido": nuevo_id_pedido})
+
+                # Obtener el precio del alimento desde la tabla Alimentos
+                cursor.execute("SELECT precio FROM HR.Alimentos WHERE id_alimento = :id_producto", {"id_producto": id_producto})
+                resultado = cursor.fetchone()
+
+                if not resultado:
+                    mostrar_error(f"No se encontró el producto con ID {id_producto}.")
+                    return
+
+                precio_alimento = resultado[0]
+                total_pedido = precio_alimento * cantidad
+
+                # Insertar en la tabla 'Pedidos' utilizando el mismo id_pedido
+                cursor.execute("""
+                    INSERT INTO HR.Pedidos (id_pedido, id_alimento, cantidad_alimento, total_pedido, direccion, nombre_cliente)
+                    VALUES (:id_pedido, :id_alimento, :cantidad, :total, :direccion, :nombre_cliente)
+                """, {
+                    "id_pedido": nuevo_id_pedido,
+                    "id_alimento": id_producto,
+                    "cantidad": cantidad,
+                    "total": total_pedido,
+                    "direccion": direccion,
+                    "nombre_cliente": nombre_cliente
+                })
+
+                # Confirmar transacción
+                conexion.commit()
+
+                # Mostrar mensaje de éxito
+                messagebox.showinfo("Éxito", f"Pedido guardado con ID {nuevo_id_pedido}.")
+
+                # Limpiar campos
+                entrada_id_producto.delete(0, tk.END)
+                entrada_cantidad.delete(0, tk.END)
+                entrada_direccion.delete(0, tk.END)
+                entrada_cliente.delete(0, tk.END)
+
+            except oracledb.DatabaseError as err:
+                conexion.rollback()  # Revertir en caso de error
+                mostrar_error(f"Error al guardar el pedido: {err}")
+            finally:
+                conexion.close()
+
+        # Botón para registrar el pedido
+        tk.Button(nueva_ventana, text="Registrar Pedido", command=insertar_pedido).pack(pady=20)
         tk.Button(nueva_ventana, text="VER PEDIDOS EN CURSO", command=abrir_ventas).pack(pady=20)
         tk.Button(nueva_ventana, text="Cerrar", command=nueva_ventana.destroy).pack(pady=20)
         nueva_ventana.mainloop()
+
 
     # Función para abrir la ventana de Insumos
     def ventana_insumos():
@@ -93,8 +185,6 @@ def abrir_ventana_principal():
         nueva_ventana.title("INSUMOS")
         nueva_ventana.geometry(f"400x400+{pos_x}+{pos_y}")
         
-        tk.Label(nueva_ventana, text="ID INSUMO").pack(pady=5)
-        tk.Entry(nueva_ventana, width=30).pack(pady=5)
         tk.Label(nueva_ventana, text="NOMBRE").pack(pady=5)
         tk.Entry(nueva_ventana, width=30).pack(pady=5)
         tk.Label(nueva_ventana, text="FECHA DE CADUCIDAD").pack(pady=5)
@@ -103,7 +193,7 @@ def abrir_ventana_principal():
         tk.Entry(nueva_ventana, width=30).pack(pady=5)
         
         tk.Button(nueva_ventana, text="Cerrar", command=nueva_ventana.destroy).pack(pady=20)
-        tk.Button(nueva_ventana, text="INVENTARIO", command=nueva_ventana.destroy).pack(pady=20)
+        tk.Button(nueva_ventana, text="INVENTARIO", command=abrir_inventario).pack(pady=20)
         nueva_ventana.mainloop()
 
     # Cargar la imagen de fondo
@@ -139,6 +229,97 @@ def abrir_ventana_principal():
     boton_insumos.place(relx=0.5, rely=0.83, anchor="center")
 
     ventana.mainloop()
+
+def abrir_inventario():
+    # Crear nueva ventana
+    nueva_ventana = tk.Tk()
+    nueva_ventana.title("Inventario Actual")
+    nueva_ventana.state("zoomed")
+
+    # Etiqueta de título
+    tk.Label(nueva_ventana, text="Inventario Actual", font=("Arial", 18, "bold")).pack(pady=10)
+    
+    # Crear un marco para la tabla
+    frame_tabla = tk.Frame(nueva_ventana)
+    frame_tabla.pack(fill="both", expand=True, padx=20, pady=20)
+
+    # Mostrar datos
+    tree = ttk.Treeview(frame_tabla, columns=("nombre_insumo", "cantidad"), show="headings", height=20)
+    tree.heading("nombre_insumo", text="Nombre del Insumo")
+    tree.heading("cantidad", text="Existencias Actuales")
+    
+    tree.column("nombre_insumo", width=300, anchor="center")
+    tree.column("cantidad", width=150, anchor="center")
+
+    tree.pack(side="left", fill="both", expand=True)
+
+    # Scrollbar para la tabla
+    scrollbar = ttk.Scrollbar(frame_tabla, orient="vertical", command=tree.yview)
+    tree.configure(yscroll=scrollbar.set)
+    scrollbar.pack(side="right", fill="y")
+
+    # Configurar etiquetas de color
+    tree.tag_configure('muchas_existencias', foreground="blue")
+    tree.tag_configure('medias_existencias', foreground="orange")
+    tree.tag_configure('pocas_existencias', foreground="red")
+
+    def cargar_datos(filtro=""):
+        """
+        Carga los datos en el Treeview según el filtro proporcionado y aplica colores.
+        """
+        conexion = obtener_conexion()
+        if conexion is None:
+            return  
+        
+        try:
+            cursor = conexion.cursor()
+            query = '''
+            SELECT i.nombre_insumo, COALESCE(v.cantidad, 0) AS cantidad
+            FROM HR.Insumos i
+            LEFT JOIN HR.VencInsumos v ON i.id_insumo = v.id_insumo
+            WHERE LOWER(i.nombre_insumo) LIKE :filtro
+            '''
+            cursor.execute(query, {"filtro": f"%{filtro.lower()}%"})
+            
+            # Limpiar la tabla antes de insertar nuevos datos
+            for item in tree.get_children():
+                tree.delete(item)
+            
+            # Insertar datos en la tabla con colores según la cantidad
+            resultados = cursor.fetchall()
+            for fila in resultados:
+                nombre_insumo, cantidad = fila
+                if cantidad > 50:  # Muchas existencias
+                    tag = 'muchas_existencias'
+                elif cantidad >= 20 and cantidad <= 50:  # Medias existencias
+                    tag = 'medias_existencias'
+                elif cantidad < 20:  # Pocas existencias
+                    tag = 'pocas_existencias'
+                tree.insert("", "end", values=fila, tags=(tag,))
+        except Exception as err:
+            messagebox.showerror("Error", f"Error al ejecutar la consulta: {err}")
+        finally:
+            conexion.close()
+
+    # Función para manejar el evento de búsqueda
+    def buscar(event):
+        filtro = entry_busqueda.get()
+        cargar_datos(filtro)
+
+    # Cargar los datos al abrir la ventana
+    cargar_datos()
+
+    # Etiqueta y campo de búsqueda
+    tk.Label(nueva_ventana, text="¿Qué desea buscar?").pack(pady=5)
+    entry_busqueda = tk.Entry(nueva_ventana, width=30)
+    entry_busqueda.pack(pady=5)
+    entry_busqueda.bind("<KeyRelease>", buscar)  # Vincula el evento de teclado con la función buscar
+
+    # Botón para cerrar la ventana
+    boton_cerrar = tk.Button(nueva_ventana, text="Cerrar", font=("Arial", 14), command=nueva_ventana.destroy)
+    boton_cerrar.pack(pady=10)
+    
+    nueva_ventana.mainloop()
 
 #VENTANAS DE VENTAS
 def abrir_ventas():
@@ -234,7 +415,7 @@ def abrir_ventas():
     
     def cerrar_ventana():
         nueva_ventana.destroy()
-        
+    
     # Botón para cerrar la ventana
     boton_cerrar = tk.Button(nueva_ventana, text="Cerrar", font=("Arial", 14), command=cerrar_ventana)
     boton_cerrar.pack(pady=10)
