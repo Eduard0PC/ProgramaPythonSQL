@@ -41,7 +41,9 @@ def validar_credenciales():
     usuario = entrada_usuario.get()
     contrasena = entrada_contrasena.get()
     if usuario == "admin" and contrasena == "1234":  # Credenciales predeterminadas
-        abrir_ventana_principal()
+        abrir_ventana_principal(usuario, contrasena)
+    elif usuario == "emplo" and contrasena == "4321": 
+        abrir_ventana_principal(usuario, contrasena)
     else:
         mostrar_error("Usuario o contraseña incorrectos")
 
@@ -51,7 +53,7 @@ tk.Button(ventana_login, text="Iniciar Sesión", command=validar_credenciales).p
 
 
 # Función para abrir la ventana principal después del inicio de sesión exitoso
-def abrir_ventana_principal():
+def abrir_ventana_principal(us, cont):
     pos_x = ventana_login.winfo_x()
     pos_y = ventana_login.winfo_y()
     ventana_login.destroy()  # Cerrar la ventana de inicio de sesión
@@ -193,7 +195,7 @@ def abrir_ventana_principal():
         tk.Entry(nueva_ventana, width=30).pack(pady=5)
         
         tk.Button(nueva_ventana, text="Cerrar", command=nueva_ventana.destroy).pack(pady=20)
-        tk.Button(nueva_ventana, text="INVENTARIO", command=abrir_inventario).pack(pady=20)
+        tk.Button(nueva_ventana, text="INVENTARIO", command=lambda: abrir_inventario(us, cont)).pack(pady=20)
         nueva_ventana.mainloop()
 
     # Cargar la imagen de fondo
@@ -224,13 +226,17 @@ def abrir_ventana_principal():
     boton_ventas = tk.Button(ventana, text="VENTAS", font=("Arial", 14), bg="white", fg="black", command=ventana_ventas)
     boton_ventas.place(relx=0.5, rely=0.70, anchor="center")
 
-    # Botón de Insumos
-    boton_insumos = tk.Button(ventana, text="INSUMOS", font=("Arial", 14), bg="black", fg="white", command=ventana_insumos)
-    boton_insumos.place(relx=0.5, rely=0.83, anchor="center")
+     # Botón de Insumos
+    if us == "admin" and cont == "1234": 
+        boton_insumos = tk.Button(ventana, text="INSUMOS", font=("Arial", 14), bg="black", fg="white", command=ventana_insumos)
+        boton_insumos.place(relx=0.5, rely=0.83, anchor="center")
+    elif us == "emplo" and cont == "4321": 
+        boton_insumos = tk.Button(ventana, text="INSUMOS", font=("Arial", 14), bg="black", fg="white", command=lambda: abrir_inventario(us, cont))
+        boton_insumos.place(relx=0.5, rely=0.83, anchor="center")
 
     ventana.mainloop()
 
-def abrir_inventario():
+def abrir_inventario(us, cont):
     # Crear nueva ventana
     nueva_ventana = tk.Tk()
     nueva_ventana.title("Inventario Actual")
@@ -244,10 +250,12 @@ def abrir_inventario():
     frame_tabla.pack(fill="both", expand=True, padx=20, pady=20)
 
     # Mostrar datos
-    tree = ttk.Treeview(frame_tabla, columns=("nombre_insumo", "cantidad"), show="headings", height=20)
+    tree = ttk.Treeview(frame_tabla, columns=("id_insumo", "nombre_insumo", "cantidad"), show="headings", height=20)
+    tree.heading("id_insumo", text="Código del insumo")
     tree.heading("nombre_insumo", text="Nombre del Insumo")
     tree.heading("cantidad", text="Existencias Actuales")
     
+    tree.column("id_insumo", width=300, anchor="center")
     tree.column("nombre_insumo", width=300, anchor="center")
     tree.column("cantidad", width=150, anchor="center")
 
@@ -274,10 +282,11 @@ def abrir_inventario():
         try:
             cursor = conexion.cursor()
             query = '''
-            SELECT i.nombre_insumo, COALESCE(v.cantidad, 0) AS cantidad
+            SELECT i.id_insumo, i.nombre_insumo, COALESCE(v.cantidad, 0) AS cantidad
             FROM HR.Insumos i
             LEFT JOIN HR.VencInsumos v ON i.id_insumo = v.id_insumo
             WHERE LOWER(i.nombre_insumo) LIKE :filtro
+
             '''
             cursor.execute(query, {"filtro": f"%{filtro.lower()}%"})
             
@@ -288,7 +297,7 @@ def abrir_inventario():
             # Insertar datos en la tabla con colores según la cantidad
             resultados = cursor.fetchall()
             for fila in resultados:
-                nombre_insumo, cantidad = fila
+                id_insumo, nombre_insumo, cantidad = fila
                 if cantidad > 50:  # Muchas existencias
                     tag = 'muchas_existencias'
                 elif cantidad >= 20 and cantidad <= 50:  # Medias existencias
@@ -306,8 +315,48 @@ def abrir_inventario():
         filtro = entry_busqueda.get()
         cargar_datos(filtro)
 
+    def eliminar_fila():
+        try:
+            # Obtener el ID de la fila seleccionada
+            seleccion = tree.selection()
+            if not seleccion:
+                messagebox.showwarning("Advertencia", "Por favor, selecciona una fila para eliminar.")
+                return
+            
+            item = tree.item(seleccion)
+            valores = item['values']
+            id_insumo= valores[0]  # Obtener el ID del pedido
+            
+            conexion = obtener_conexion()
+            if conexion is None:
+                return  
+            # Eliminar de la base de datos
+            try:
+                cursor = conexion.cursor()
+                cursor.execute("DELETE FROM HR.VencInsumos WHERE id_insumo = :1", (id_insumo,))
+                cursor.execute("DELETE FROM HR.Insumos WHERE id_insumo = :1", (id_insumo,))
+                conexion.commit()
+
+            except oracledb.DatabaseError as err:
+                messagebox.showerror("Error", f"Error al eliminar el registro: {err}")
+                return
+            finally:
+                conexion.close()
+            
+            # Eliminar la fila del Treeview
+            tree.delete(seleccion)
+            messagebox.showinfo("Éxito", f"Registro con ID {id_insumo} eliminado correctamente.")
+        
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo eliminar la fila: {e}")
+
     # Cargar los datos al abrir la ventana
     cargar_datos()
+
+    if us == "admin" and cont == "1234":
+        #Boton para borrar registro de inventarios
+        boton_eliminar = tk.Button(nueva_ventana, text="Eliminar insumo", font=("Arial", 14), command=eliminar_fila)
+        boton_eliminar.pack(pady=10)
 
     # Etiqueta y campo de búsqueda
     tk.Label(nueva_ventana, text="¿Qué desea buscar?").pack(pady=5)
