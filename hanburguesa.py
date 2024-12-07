@@ -20,7 +20,28 @@ def obtener_conexion():
     except oracledb.DatabaseError as err:
         messagebox.showerror("Error", f"Error de conexión a la base de datos: {err}")
         return None
-
+#Definir secuencias y tablas (las que sean necesarias)
+def instalardb():
+    conexion=obtener_conexion()
+    if conexion is None:
+        return
+    else:
+        try:
+            cursor=conexion.cursor()
+            query1='''
+            CREATE SECUENCE HR.INSUM_SEQ
+            INCREMENT BY 1
+            START WITH 1
+            MINVALUE 1
+            '''
+            cursor.execute(query1)
+            conexion.commit()
+        except oracledb.DatabaseError as e:
+            if "ORA-00955" in str(e):
+                pass
+        finally:
+            cursor.close()
+            conexion.close()
 # Ventana de inicio de sesión
 ventana_login = tk.Tk()
 ventana_login.title("Inicio de Sesión")
@@ -185,17 +206,47 @@ def abrir_ventana_principal(us, cont):
         
         nueva_ventana = tk.Tk()
         nueva_ventana.title("INSUMOS")
-        nueva_ventana.geometry(f"400x400+{pos_x}+{pos_y}")
+        nueva_ventana.geometry(f"400x500+{pos_x}+{pos_y}")
         
         tk.Label(nueva_ventana, text="NOMBRE").pack(pady=5)
-        tk.Entry(nueva_ventana, width=30).pack(pady=5)
+        entrada_nom_insumo=tk.Entry(nueva_ventana, width=30)
+        entrada_nom_insumo.pack(pady=5)
         tk.Label(nueva_ventana, text="FECHA DE CADUCIDAD").pack(pady=5)
-        tk.Entry(nueva_ventana, width=30).pack(pady=5)
+        entrada_fecha_cad=tk.Entry(nueva_ventana, width=30)
+        entrada_fecha_cad.pack(pady=5)
         tk.Label(nueva_ventana, text="CANTIDAD").pack(pady=5)
-        tk.Entry(nueva_ventana, width=30).pack(pady=5)
-        
-        tk.Button(nueva_ventana, text="Cerrar", command=nueva_ventana.destroy).pack(pady=20)
-        tk.Button(nueva_ventana, text="INVENTARIO", command=lambda: abrir_inventario(us, cont)).pack(pady=20)
+        entrada_cant=tk.Entry(nueva_ventana, width=30)
+        entrada_cant.pack(pady=5)
+        tk.Label(nueva_ventana, text="UNIDAD DE MEDIDA").pack(pady=5)
+        entrada_u_medida=tk.Entry(nueva_ventana, width=30)
+        entrada_u_medida.pack(pady=5)
+        def ingresar_insumo():
+            nombre_insumo=entrada_nom_insumo.get()
+            caducidad=entrada_fecha_cad.get()
+            cantidad=entrada_cant.get()
+            unidad_medida=entrada_u_medida.get()
+            conexion=obtener_conexion()
+            if conexion is None:
+                return
+            try:
+                print(nombre_insumo, unidad_medida, caducidad, cantidad)
+                cursor = conexion.cursor()
+                query1='''INSERT INTO HR.Insumos(id_insumo, nombre_insumo, unidad_medida) VALUES (HR.INSUM_SEQ.NEXTVAL, :nombre_insumo, :unidad_medida)'''
+                query2='''INSERT INTO HR.VencInsumos(id_insumo, caducidad, cantidad) VALUES (HR.INSUM_SEQ.CURRVAL, TO_DATE(:caducidad, 'DD-MM-YYYY'), :cantidad)'''
+                input1=(nombre_insumo, unidad_medida)
+                input2=(caducidad, cantidad)
+                cursor.execute(query1,input1)
+                cursor.execute(query2,input2)
+                conexion.commit()
+                messagebox.showinfo("Éxito",f"Insumo guardado")
+            except Exception as err:
+                messagebox.showerror("Error", f"Error al ejecutar la consulta")
+            finally:
+                conexion.close()
+                
+        tk.Button(nueva_ventana, text="INVENTARIO", command=lambda: abrir_inventario(us, cont)).pack(pady=15)
+        tk.Button(nueva_ventana, text="AGREGAR",command=ingresar_insumo).pack(pady=15)
+        tk.Button(nueva_ventana, text="Cerrar", command=nueva_ventana.destroy).pack(pady=15)
         nueva_ventana.mainloop()
 
     # Cargar la imagen de fondo
@@ -369,7 +420,7 @@ def abrir_inventario(us, cont):
     boton_cerrar.pack(pady=10)
     
     nueva_ventana.mainloop()
-
+    
 #VENTANAS DE VENTAS
 def abrir_ventas():
     # Crear nueva ventana
@@ -471,4 +522,5 @@ def abrir_ventas():
     
     nueva_ventana.mainloop()
 
+instalardb()
 ventana_login.mainloop()
