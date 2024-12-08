@@ -490,7 +490,138 @@ class hanburguesa:
         boton_cerrar = tk.Button(nueva_ventana, text="Cerrar", font=("Arial", 14), command=nueva_ventana.destroy)
         boton_cerrar.pack(pady=10)
         nueva_ventana.mainloop()
+    #VENTANA DE ADMIN DE USUARIOS
+    def abrir_usuarios(self):
+        # Crear nueva ventana
+        nueva_ventana = tk.Tk()
+        nueva_ventana.title("Administrar usuarios")
+        nueva_ventana.state("zoomed")
+
+        # Etiqueta de título
+        tk.Label(nueva_ventana, text="Administrar usuarios", font=("Arial", 18, "bold")).pack(pady=10)
         
+        # Crear un marco para la tabla
+        frame_tabla = tk.Frame(nueva_ventana)
+        frame_tabla.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Mostrar datos
+        tree = ttk.Treeview(frame_tabla, columns=("id_usuario", "nombre_usuario", "rol"), show="headings", height=20)
+        tree.heading("id_usuario", text="Código del usuario")
+        tree.heading("nombre_usuario", text="Nombre del usuario")
+        tree.heading("rol", text="Rol del usuario")
+        
+        tree.column("id_usuario", width=300, anchor="center")
+        tree.column("nombre_usuario", width=300, anchor="center")
+        tree.column("rol", width=150, anchor="center")
+
+        tree.pack(side="left", fill="both", expand=True)
+
+        # Scrollbar para la tabla
+        scrollbar = ttk.Scrollbar(frame_tabla, orient="vertical", command=tree.yview)
+        tree.configure(yscroll=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+
+        # Configurar etiquetas de color
+        tree.tag_configure('admin', foreground="blue")
+        tree.tag_configure('empleado', foreground="green")
+
+        def cargar_datos(filtro=""):
+            """
+            Carga los datos en el Treeview según el filtro proporcionado y aplica colores.
+            """
+            conexion = self.obtener_conexion()
+            if conexion is None:
+                return  
+            
+            try:
+                cursor = conexion.cursor()
+                query = '''
+                SELECT u.id_usuario, u.nombre_usuario, r.rol
+                FROM HR.UsuariosNom u
+                JOIN HR.UsuariosRol r ON u.id_usuario = r.id_usuario
+                WHERE LOWER(u.nombre_usuario) LIKE :filtro
+                '''
+                cursor.execute(query, {"filtro": f"%{filtro.lower()}%"})
+                
+                # Limpiar la tabla antes de insertar nuevos datos
+                for item in tree.get_children():
+                    tree.delete(item)
+                
+                # Insertar datos en la tabla con colores según el rol
+                resultados = cursor.fetchall()
+                for fila in resultados:
+                    id_usuario, nombre_usuario, rol = fila
+                    if rol == "Admin":
+                        tag = 'admin'
+                    elif rol == "Emple":
+                        tag = 'empleado'
+                    tree.insert("", "end", values=fila, tags=(tag,))
+            except Exception as err:
+                messagebox.showerror("Error", f"Error al ejecutar la consulta: {err}")
+            finally:
+                conexion.close()
+
+        # Función para manejar el evento de búsqueda
+        def buscar(event):
+            filtro = entry_busqueda.get()
+            cargar_datos(filtro)
+
+        def eliminar_fila():
+            try:
+                # Obtener el ID de la fila seleccionada
+                seleccion = tree.selection()
+                if not seleccion:
+                    messagebox.showwarning("Advertencia", "Por favor, selecciona una fila para eliminar.")
+                    return
+                
+                item = tree.item(seleccion)
+                valores = item['values']
+                id_usuario= valores[0]  # Obtener el ID del pedido
+                
+                conexion = self.obtener_conexion()
+                if conexion is None:
+                    return  
+                # Eliminar de la base de datos
+                try:
+                    cursor = conexion.cursor()
+                    cursor.execute("DELETE FROM HR.UsuariosRol WHERE id_usuario = :1", (id_usuario,))
+                    cursor.execute("DELETE FROM HR.UsuariosNom WHERE id_usuario = :1", (id_usuario,))
+                    conexion.commit()
+
+                except oracledb.DatabaseError as err:
+                    messagebox.showerror("Error", f"Error al eliminar el registro: {err}")
+                    return
+                finally:
+                    conexion.close()
+                
+                # Eliminar la fila del Treeview
+                tree.delete(seleccion)
+                messagebox.showinfo("Éxito", f"Registro con ID {id_usuario} eliminado correctamente.")
+            
+            except Exception as e:
+                messagebox.showerror("Error", f"No se pudo eliminar la fila: {e}")
+
+        # Cargar los datos al abrir la ventana
+        cargar_datos()
+
+        #Boton para borrar registro de inventarios
+        boton_eliminar = tk.Button(nueva_ventana, text="Eliminar usuario", font=("Arial", 14), command=eliminar_fila)
+        boton_eliminar.pack(pady=10)
+
+        # Cargar los datos al abrir la ventana
+        cargar_datos()
+
+        # Etiqueta y campo de búsqueda
+        tk.Label(nueva_ventana, text="¿Qué desea buscar?").pack(pady=5)
+        entry_busqueda = tk.Entry(nueva_ventana, width=30)
+        entry_busqueda.pack(pady=5)
+        entry_busqueda.bind("<KeyRelease>", buscar)  # Vincula el evento de teclado con la función buscar
+
+        # Botón para cerrar la ventana
+        boton_cerrar = tk.Button(nueva_ventana, text="Cerrar", font=("Arial", 14), command=nueva_ventana.destroy)
+        boton_cerrar.pack(pady=10)
+        
+        nueva_ventana.mainloop()
     #VENTANAS DE VENTAS
     def abrir_ventas(self):
         # Crear nueva ventana
