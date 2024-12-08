@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox  # Para mostrar mensajes de error
 from PIL import Image, ImageTk  # Pillow para manejar imágenes avanzadas
 import oracledb
-oracledb.init_oracle_client() #inicializar la tabla
+oracledb.init_oracle_client(r'C:\Users\pablo\Oracle Client\instantclient_19_25') #inicializar la tabla
 
 # Función para mostrar un mensaje de error
 def mostrar_error(mensaje):
@@ -13,7 +13,7 @@ def obtener_conexion():
     try:
         conexion = oracledb.connect(
             user='SYSTEM',
-            password='108310',
+            password='DelfosData13',
             dsn='localhost/xe'
         )
         return conexion
@@ -28,13 +28,64 @@ def instalardb():
     else:
         try:
             cursor=conexion.cursor()
-            query1='''
-            CREATE SECUENCE HR.INSUM_SEQ
+            queryT1='''CREATE TABLE TEST.UsuariosNom (
+            id_usuario VARCHAR2(8) CONSTRAINT cv_usuario PRIMARY KEY, 
+            nombre_usuario VARCHAR(32) NOT NULL, 
+            contrasenia VARCHAR(32) NOT NULL)
+            '''
+            queryT2='''CREATE TABLE TEST.UsuariosRol (
+            id_usuario VARCHAR2(8) CONSTRAINT cv_usuario_i REFERENCES UsuariosNom(id_usuario), 
+            rol CHAR(5) NOT NULL)
+            '''
+            queryT3='''CREATE TABLE TEST.Insumos (
+            id_insumo VARCHAR2(12) CONSTRAINT cv_insumo PRIMARY KEY,
+            nombre_insumo VARCHAR(10) UNIQUE,
+            unidad_medida CHAR(2) NOT NULL)
+            '''
+            queryT4='''CREATE TABLE TEST.VencInsumos (
+            id_insumo VARCHAR2(12) NOT NULL,
+            caducidad DATE NOT NULL,
+            cantidad NUMBER(8) NOT NULL,
+            PRIMARY KEY (id_insumo, caducidad), 
+            CONSTRAINT cvi_insumo_i FOREIGN KEY(id_insumo) REFERENCES Insumos(id_insumo))
+            '''
+            queryT5='''CREATE TABLE TEST.Alimentos (
+            id_alimento VARCHAR2(12) CONSTRAINT cv_alimento PRIMARY KEY, 
+            nombre_alimento VARCHAR(10) NOT NULL, 
+            precio NUMBER(8,2) NOT NULL)
+            '''
+            queryT6='''CREATE TABLE TEST.Pedidos (
+            id_pedido VARCHAR(12) CONSTRAINT cv_pedido_i REFERENCES PedidoDetalles(id_pedido),
+            id_alimento VARCHAR2(12) CONSTRAINT cv_alimento_i REFERENCES Alimentos(id_alimento), 
+            cantidad_alimento NUMBER(5) NOT NULL, 
+            total_pedido NUMBER(8,2) NOT NULL,
+            direccion VARCHAR(72) NOT NULL,
+            nombre_cliente VARCHAR(24) NOT NULL)
+            '''
+            queryT7='''CREATE TABLE TEST.PedidoDetalles (
+            id_pedido VARCHAR(12) CONSTRAINT cv_pedido PRIMARY KEY,
+            fecha_pedido DATE NOT DEFAULT SYSDATE NULL,
+            hora_pedido TIMESTAMP  WITH LOCAL TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL)
+            '''
+            queryS1='''
+            CREATE SECUENCE TEST.INSUM_SEQ
             INCREMENT BY 1
             START WITH 1
             MINVALUE 1
             '''
-            cursor.execute(query1)
+            #Usuarios
+            cursor.execute(queryT1)
+            cursor.execute(queryT2)
+            #Insumos
+            cursor.execute(queryT3)
+            cursor.execute(queryT4)
+            #Alimentos
+            cursor.execute(queryT5)
+            #PedidosDetalles
+            cursor.execute(queryT7)
+            #RelacionPedidos
+            cursor.execute(queryT6)
+            cursor.execute(queryS1)
             conexion.commit()
         except oracledb.DatabaseError as e:
             if "ORA-00955" in str(e):
@@ -141,7 +192,7 @@ def abrir_ventana_principal(us, cont):
                 cursor = conexion.cursor()
 
                 # Generar un nuevo ID para 'PedidoDetalles'
-                cursor.execute("SELECT 'P'||LPAD(TO_CHAR(NVL(MAX(TO_NUMBER(SUBSTR(id_pedido, 2))), 0) + 1), 11, '0') FROM HR.PedidoDetalles")
+                cursor.execute("SELECT 'P'||LPAD(TO_CHAR(NVL(MAX(TO_NUMBER(SUBSTR(id_pedido, 2))), 0) + 1), 11, '0') FROM TEST.PedidoDetalles")
                 nuevo_id_pedido = cursor.fetchone()[0]
 
                 # Insertar en la tabla 'PedidoDetalles'
@@ -151,7 +202,7 @@ def abrir_ventana_principal(us, cont):
                 """, {"id_pedido": nuevo_id_pedido})
 
                 # Obtener el precio del alimento desde la tabla Alimentos
-                cursor.execute("SELECT precio FROM HR.Alimentos WHERE id_alimento = :id_producto", {"id_producto": id_producto})
+                cursor.execute("SELECT precio FROM TEST.Alimentos WHERE id_alimento = :id_producto", {"id_producto": id_producto})
                 resultado = cursor.fetchone()
 
                 if not resultado:
@@ -163,7 +214,7 @@ def abrir_ventana_principal(us, cont):
 
                 # Insertar en la tabla 'Pedidos' utilizando el mismo id_pedido
                 cursor.execute("""
-                    INSERT INTO HR.Pedidos (id_pedido, id_alimento, cantidad_alimento, total_pedido, direccion, nombre_cliente)
+                    INSERT INTO TEST.Pedidos (id_pedido, id_alimento, cantidad_alimento, total_pedido, direccion, nombre_cliente)
                     VALUES (:id_pedido, :id_alimento, :cantidad, :total, :direccion, :nombre_cliente)
                 """, {
                     "id_pedido": nuevo_id_pedido,
@@ -225,22 +276,39 @@ def abrir_ventana_principal(us, cont):
             caducidad=entrada_fecha_cad.get()
             cantidad=entrada_cant.get()
             unidad_medida=entrada_u_medida.get()
+
             conexion=obtener_conexion()
             if conexion is None:
                 return
             try:
-                print(nombre_insumo, unidad_medida, caducidad, cantidad)
                 cursor = conexion.cursor()
-                query1='''INSERT INTO HR.Insumos(id_insumo, nombre_insumo, unidad_medida) VALUES (HR.INSUM_SEQ.NEXTVAL, :nombre_insumo, :unidad_medida)'''
-                query2='''INSERT INTO HR.VencInsumos(id_insumo, caducidad, cantidad) VALUES (HR.INSUM_SEQ.CURRVAL, TO_DATE(:caducidad, 'DD-MM-YYYY'), :cantidad)'''
+                #Querys
+                checkquery='''SELECT id_insumo FROM TEST.Insumos WHERE nombre_insumo=:nombre_insumo'''
+                query0='''INSERT INTO TEST.VencInsumos(id_insumo, caducidad, cantidad) VALUES (:id_insumo, TO_DATE(:caducidad, 'DD-MM-YYYY'), :cantidad)'''
+                query1='''INSERT INTO TEST.Insumos(id_insumo, nombre_insumo, unidad_medida) VALUES (TEST.INSUM_SEQ.NEXTVAL, :nombre_insumo, :unidad_medida)'''
+                query2='''INSERT INTO TEST.VencInsumos(id_insumo, caducidad, cantidad) VALUES (TEST.INSUM_SEQ.CURRVAL, TO_DATE(:caducidad, 'DD-MM-YYYY'), :cantidad)'''
+                #Inputs
+                chkinput=(nombre_insumo,)
                 input1=(nombre_insumo, unidad_medida)
                 input2=(caducidad, cantidad)
-                cursor.execute(query1,input1)
-                cursor.execute(query2,input2)
+                #Ejecutar funcionalidad
+                cursor.execute(checkquery,chkinput)
+                exists=cursor.fetchone()
+                if exists is not None:
+                    id_insumo=exists[0]
+                    input0=(id_insumo,caducidad,cantidad)
+                    cursor.execute(query0,input0)
+                    messagebox.showinfo("Éxito",f"Insumo guardado con ID: {id_insumo}")
+                elif exists is None:
+                    cursor.execute(query1,input1)
+                    cursor.execute(query2,input2)
+                    #Rastrear ID generado
+                    cursor.execute("SELECT TEST.INSUM_SEQ.CURRVAL FROM DUAL")
+                    currID=cursor.fetchone()[0]
+                    messagebox.showinfo("Éxito",f"Nuevo insumo guardado con la ID: {currID}")
                 conexion.commit()
-                messagebox.showinfo("Éxito",f"Insumo guardado")
             except Exception as err:
-                messagebox.showerror("Error", f"Error al ejecutar la consulta")
+                messagebox.showerror("Error", f"Error al ejecutar la consulta: {err}")
             finally:
                 conexion.close()
                 
@@ -334,8 +402,8 @@ def abrir_inventario(us, cont):
             cursor = conexion.cursor()
             query = '''
             SELECT i.id_insumo, i.nombre_insumo, COALESCE(v.cantidad, 0) AS cantidad
-            FROM HR.Insumos i
-            LEFT JOIN HR.VencInsumos v ON i.id_insumo = v.id_insumo
+            FROM TEST.Insumos i
+            LEFT JOIN TEST.VencInsumos v ON i.id_insumo = v.id_insumo
             WHERE LOWER(i.nombre_insumo) LIKE :filtro
 
             '''
@@ -384,8 +452,8 @@ def abrir_inventario(us, cont):
             # Eliminar de la base de datos
             try:
                 cursor = conexion.cursor()
-                cursor.execute("DELETE FROM HR.VencInsumos WHERE id_insumo = :1", (id_insumo,))
-                cursor.execute("DELETE FROM HR.Insumos WHERE id_insumo = :1", (id_insumo,))
+                cursor.execute("DELETE FROM TEST.VencInsumos WHERE id_insumo = :1", (id_insumo,))
+                cursor.execute("DELETE FROM TEST.Insumos WHERE id_insumo = :1", (id_insumo,))
                 conexion.commit()
 
             except oracledb.DatabaseError as err:
@@ -460,7 +528,7 @@ def abrir_ventas():
         
         try:
             cursor = conexion.cursor()
-            query = '''SELECT id_pedido, TO_CHAR(fecha_pedido, 'YYYY-MM-DD'), TO_CHAR(hora_pedido, 'HH24:MI:SS') FROM HR.PedidoDetalles'''
+            query = '''SELECT id_pedido, TO_CHAR(fecha_pedido, 'YYYY-MM-DD'), TO_CHAR(hora_pedido, 'HH24:MI:SS') FROM TEST.PedidoDetalles'''
             cursor.execute(query)
             
             # Insertar datos en la tabla
@@ -491,7 +559,7 @@ def abrir_ventas():
             # Eliminar de la base de datos
             try:
                 cursor = conexion.cursor()
-                cursor.execute("DELETE FROM HR.PedidoDetalles WHERE id_pedido = :1", (id_pedido,))
+                cursor.execute("DELETE FROM TEST.PedidoDetalles WHERE id_pedido = :1", (id_pedido,))
                 conexion.commit()
 
             except oracledb.DatabaseError as err:
