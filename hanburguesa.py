@@ -582,6 +582,4 @@ class hanburguesa:
         boton_cerrar.pack(pady=10)
         nueva_ventana.mainloop()
 if __name__ == "__main__":
-    hanburguesa= hanburguesa()
-    hanburguesa.main()
-    hanburguesa
+    app=hanburguesa()
