@@ -592,6 +592,4 @@ class hanburguesa:
         nueva_ventana.mainloop()
 
 if __name__ == "__main__":
-    hanburguesa= hanburguesa()
-    hanburguesa.main()
-    hanburguesa
+    app = hanburguesa()
