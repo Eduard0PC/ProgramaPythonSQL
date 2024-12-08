@@ -3,7 +3,10 @@ from tkinter import ttk, messagebox  # Para mostrar mensajes de error
 from PIL import Image, ImageTk  # Pillow para manejar imágenes avanzadas
 import oracledb
 oracledb.init_oracle_client(r'C:\Users\pablo\Oracle Client\instantclient_19_25') #inicializar la tabla
-
+#================= ESTA ES LA UNICA COSA QUE VAN A CAMBIAR PARA LA DATABASE ============#
+passwd='Screwedup'
+schema='TEST'
+#=======================================================================================#
 class hanburguesa:
     def __init__(self):
         self.inicio_de_sesion()
@@ -24,7 +27,7 @@ class hanburguesa:
         try:
             conexion = oracledb.connect(
                 user='SYSTEM',
-                password='108310',
+                password=passwd,
                 dsn='localhost/xe'
             )
             return conexion
@@ -39,47 +42,47 @@ class hanburguesa:
         else:
             try:
                 cursor=conexion.cursor()
-                queryT1='''CREATE TABLE TEST.UsuariosNom (
+                queryT1=f'''CREATE TABLE {schema}.UsuariosNom (
                 id_usuario VARCHAR2(8) CONSTRAINT cv_usuario PRIMARY KEY, 
                 nombre_usuario VARCHAR(32) NOT NULL, 
                 contrasenia VARCHAR(32) NOT NULL)
                 '''
-                queryT2='''CREATE TABLE TEST.UsuariosRol (
-                id_usuario VARCHAR2(8) CONSTRAINT cv_usuario_i REFERENCES UsuariosNom(id_usuario), 
+                queryT2=f'''CREATE TABLE {schema}.UsuariosRol (
+                id_usuario VARCHAR2(8) CONSTRAINT cv_usuario_i REFERENCES {schema}.UsuariosNom(id_usuario), 
                 rol CHAR(5) NOT NULL)
                 '''
-                queryT3='''CREATE TABLE TEST.Insumos (
+                queryT3=f'''CREATE TABLE {schema}.Insumos (
                 id_insumo VARCHAR2(12) CONSTRAINT cv_insumo PRIMARY KEY,
                 nombre_insumo VARCHAR(10) UNIQUE,
                 unidad_medida CHAR(2) NOT NULL)
                 '''
-                queryT4='''CREATE TABLE TEST.VencInsumos (
+                queryT4=f'''CREATE TABLE {schema}.VencInsumos (
                 id_insumo VARCHAR2(12) NOT NULL,
                 caducidad DATE NOT NULL,
                 cantidad NUMBER(8) NOT NULL,
                 PRIMARY KEY (id_insumo, caducidad), 
-                CONSTRAINT cvi_insumo_i FOREIGN KEY(id_insumo) REFERENCES Insumos(id_insumo))
+                CONSTRAINT cvi_insumo_i FOREIGN KEY(id_insumo) REFERENCES {schema}.Insumos(id_insumo))
                 '''
-                queryT5='''CREATE TABLE TEST.Alimentos (
+                queryT5=f'''CREATE TABLE {schema}.Alimentos (
                 id_alimento VARCHAR2(12) CONSTRAINT cv_alimento PRIMARY KEY, 
                 nombre_alimento VARCHAR(10) NOT NULL, 
                 precio NUMBER(8,2) NOT NULL)
                 '''
-                queryT6='''CREATE TABLE TEST.Pedidos (
-                id_pedido VARCHAR(12) CONSTRAINT cv_pedido_i REFERENCES PedidoDetalles(id_pedido),
-                id_alimento VARCHAR2(12) CONSTRAINT cv_alimento_i REFERENCES Alimentos(id_alimento), 
+                queryT6=f'''CREATE TABLE {schema}.Pedidos (
+                id_pedido VARCHAR(12) CONSTRAINT cv_pedido_i REFERENCES {schema}.PedidoDetalles(id_pedido),
+                id_alimento VARCHAR2(12) CONSTRAINT cv_alimento_i REFERENCES {schema}.Alimentos(id_alimento), 
                 cantidad_alimento NUMBER(5) NOT NULL, 
                 total_pedido NUMBER(8,2) NOT NULL,
                 direccion VARCHAR(72) NOT NULL,
                 nombre_cliente VARCHAR(24) NOT NULL)
                 '''
-                queryT7='''CREATE TABLE TEST.PedidoDetalles (
+                queryT7=f'''CREATE TABLE {schema}.PedidoDetalles (
                 id_pedido VARCHAR(12) CONSTRAINT cv_pedido PRIMARY KEY,
                 fecha_pedido DATE NOT DEFAULT SYSDATE NULL,
                 hora_pedido TIMESTAMP  WITH LOCAL TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL)
                 '''
-                queryS1='''
-                CREATE SECUENCE TEST.INSUM_SEQ
+                queryS1=f'''
+                CREATE SECUENCE {schema}.INSUM_SEQ
                 INCREMENT BY 1
                 START WITH 1
                 MINVALUE 1
@@ -130,10 +133,10 @@ class hanburguesa:
                     cursor = conexion.cursor()
 
                     # Consulta para validar credenciales y obtener el rol del usuario
-                    query = '''
+                    query = f'''
                         SELECT UN.id_usuario, UR.rol
-                        FROM HR.UsuariosNom UN
-                        JOIN HR.UsuariosRol UR ON UN.id_usuario = UR.id_usuario
+                        FROM {schema}.UsuariosNom UN
+                        JOIN {schema}.UsuariosRol UR ON UN.id_usuario = UR.id_usuario
                         WHERE UN.nombre_usuario = :usuario AND UN.contrasenia = :contrasena
                     '''
                     cursor.execute(query, {"usuario": usuario, "contrasena": contrasena})
@@ -229,15 +232,15 @@ class hanburguesa:
                 try:
                     cursor = conexion.cursor()
                     # Generar un nuevo ID para 'PedidoDetalles'
-                    cursor.execute("SELECT 'P'||LPAD(TO_CHAR(NVL(MAX(TO_NUMBER(SUBSTR(id_pedido, 2))), 0) + 1), 11, '0') FROM HR.PedidoDetalles")
+                    cursor.execute(f"SELECT 'P'||LPAD(TO_CHAR(NVL(MAX(TO_NUMBER(SUBSTR(id_pedido, 2))), 0) + 1), 11, '0') FROM {schema}.PedidoDetalles")
                     nuevo_id_pedido = cursor.fetchone()[0]
                     # Insertar en la tabla 'PedidoDetalles'
-                    cursor.execute("""
-                        INSERT INTO HR.PedidoDetalles (id_pedido, fecha_pedido, hora_pedido)
+                    cursor.execute(f"""
+                        INSERT INTO {schema}.PedidoDetalles (id_pedido, fecha_pedido, hora_pedido)
                         VALUES (:id_pedido, TO_DATE('2024-12-01', 'YYYY-MM-DD'), SYSTIMESTAMP)
                     """, {"id_pedido": nuevo_id_pedido})
                      # Obtener el precio del alimento desde la tabla Alimentos
-                    cursor.execute("SELECT precio FROM HR.Alimentos WHERE id_alimento = :id_producto", {"id_producto": id_producto})
+                    cursor.execute(f"SELECT precio FROM {schema}.Alimentos WHERE id_alimento = :id_producto", {"id_producto": id_producto})
                     resultado = cursor.fetchone()
                     if not resultado:
                         self.mostrar_error(f"No se encontró el producto con ID {id_producto}.")
@@ -245,8 +248,8 @@ class hanburguesa:
                     precio_alimento = resultado[0]
                     total_pedido = precio_alimento * cantidad
                     # Insertar en la tabla 'Pedidos' utilizando el mismo id_pedido
-                    cursor.execute("""
-                        INSERT INTO TEST.Pedidos (id_pedido, id_alimento, cantidad_alimento, total_pedido, direccion, nombre_cliente)
+                    cursor.execute(f"""
+                        INSERT INTO {schema}.Pedidos (id_pedido, id_alimento, cantidad_alimento, total_pedido, direccion, nombre_cliente)
                         VALUES (:id_pedido, :id_alimento, :cantidad, :total, :direccion, :nombre_cliente)
                     """, {
                         "id_pedido": nuevo_id_pedido,
@@ -305,10 +308,10 @@ class hanburguesa:
                 try:
                     cursor = conexion.cursor()
                     #Querys
-                    checkquery='''SELECT id_insumo FROM TEST.Insumos WHERE nombre_insumo=:nombre_insumo'''
-                    query0='''INSERT INTO TEST.VencInsumos(id_insumo, caducidad, cantidad) VALUES (:id_insumo, TO_DATE(:caducidad, 'DD-MM-YYYY'), :cantidad)'''
-                    query1='''INSERT INTO TEST.Insumos(id_insumo, nombre_insumo, unidad_medida) VALUES (TEST.INSUM_SEQ.NEXTVAL, :nombre_insumo, :unidad_medida)'''
-                    query2='''INSERT INTO TEST.VencInsumos(id_insumo, caducidad, cantidad) VALUES (TEST.INSUM_SEQ.CURRVAL, TO_DATE(:caducidad, 'DD-MM-YYYY'), :cantidad)'''
+                    checkquery=f'''SELECT id_insumo FROM {schema}.Insumos WHERE nombre_insumo=:nombre_insumo'''
+                    query0=f'''INSERT INTO {schema}.VencInsumos(id_insumo, caducidad, cantidad) VALUES (:id_insumo, TO_DATE(:caducidad, 'DD-MM-YYYY'), :cantidad)'''
+                    query1=f'''INSERT INTO {schema}.Insumos(id_insumo, nombre_insumo, unidad_medida) VALUES ({schema}.INSUM_SEQ.NEXTVAL, :nombre_insumo, :unidad_medida)'''
+                    query2=f'''INSERT INTO {schema}.VencInsumos(id_insumo, caducidad, cantidad) VALUES ({schema}.INSUM_SEQ.CURRVAL, TO_DATE(:caducidad, 'DD-MM-YYYY'), :cantidad)'''
                     #Inputs
                     chkinput=(nombre_insumo,)
                     input1=(nombre_insumo, unidad_medida)
@@ -325,7 +328,7 @@ class hanburguesa:
                         cursor.execute(query1,input1)
                         cursor.execute(query2,input2)
                         #Rastrear ID generado
-                        cursor.execute("SELECT TEST.INSUM_SEQ.CURRVAL FROM DUAL")
+                        cursor.execute(f"SELECT {schema}.INSUM_SEQ.CURRVAL FROM DUAL")
                         currID=cursor.fetchone()[0]
                         messagebox.showinfo("Éxito",f"Nuevo insumo guardado con la ID: {currID}")
                     conexion.commit()
@@ -410,10 +413,10 @@ class hanburguesa:
                 return 
             try:
                 cursor=conexion.cursor()
-                query = '''
+                query = f'''
                 SELECT i.id_insumo, i.nombre_insumo, COALESCE(v.cantidad, 0) AS cantidad
-                FROM HR.Insumos i
-                LEFT JOIN HR.VencInsumos v ON i.id_insumo = v.id_insumo
+                FROM {schema}.Insumos i
+                LEFT JOIN {schema}.VencInsumos v ON i.id_insumo = v.id_insumo
                 WHERE LOWER(i.nombre_insumo) LIKE :filtro
                 '''
                 cursor.execute(query, {"filtro": f"%{filtro.lower()}%"}) 
@@ -457,8 +460,8 @@ class hanburguesa:
                 # Eliminar de la base de datos
                 try:
                     cursor = conexion.cursor()
-                    cursor.execute("DELETE FROM HR.VencInsumos WHERE id_insumo = :1", (id_insumo,))
-                    cursor.execute("DELETE FROM HR.Insumos WHERE id_insumo = :1", (id_insumo,))
+                    cursor.execute(f"DELETE FROM {schema}.VencInsumos WHERE id_insumo = :1", (id_insumo,))
+                    cursor.execute(f"DELETE FROM {schema}.Insumos WHERE id_insumo = :1", (id_insumo,))
                     conexion.commit()
 
                 except oracledb.DatabaseError as err:
@@ -535,10 +538,10 @@ class hanburguesa:
             
             try:
                 cursor = conexion.cursor()
-                query = '''
+                query = f'''
                 SELECT u.id_usuario, u.nombre_usuario, r.rol
-                FROM HR.UsuariosNom u
-                JOIN HR.UsuariosRol r ON u.id_usuario = r.id_usuario
+                FROM {schema}.UsuariosNom u
+                JOIN {schema}.UsuariosRol r ON u.id_usuario = r.id_usuario
                 WHERE LOWER(u.nombre_usuario) LIKE :filtro
                 '''
                 cursor.execute(query, {"filtro": f"%{filtro.lower()}%"})
@@ -584,8 +587,8 @@ class hanburguesa:
                 # Eliminar de la base de datos
                 try:
                     cursor = conexion.cursor()
-                    cursor.execute("DELETE FROM HR.UsuariosRol WHERE id_usuario = :1", (id_usuario,))
-                    cursor.execute("DELETE FROM HR.UsuariosNom WHERE id_usuario = :1", (id_usuario,))
+                    cursor.execute(f"DELETE FROM {schema}.UsuariosRol WHERE id_usuario = :1", (id_usuario,))
+                    cursor.execute(f"DELETE FROM {schema}.UsuariosNom WHERE id_usuario = :1", (id_usuario,))
                     conexion.commit()
 
                 except oracledb.DatabaseError as err:
@@ -634,7 +637,7 @@ class hanburguesa:
             return
         try:
             cursor = conexion.cursor()
-            consulta = """
+            consulta = f"""
             SELECT 
                 pd.id_pedido,
                 pd.fecha_pedido,
@@ -644,8 +647,8 @@ class hanburguesa:
                 p.total_pedido,
                 p.direccion,
                 p.nombre_cliente
-            FROM HR.PedidoDetalles pd
-            JOIN HR.Pedidos p ON pd.id_pedido = p.id_pedido
+            FROM {schema}.PedidoDetalles pd
+            JOIN {schema}.Pedidos p ON pd.id_pedido = p.id_pedido
             """
             cursor.execute(consulta)
             resultados = cursor.fetchall()
@@ -690,7 +693,7 @@ class hanburguesa:
                 # Eliminar de la base de datos
                 try:
                     cursor = conexion.cursor()
-                    cursor.execute("DELETE FROM HR.PedidoDetalles WHERE id_pedido = :1", (id_pedido,))
+                    cursor.execute(f"DELETE FROM {schema}.PedidoDetalles WHERE id_pedido = :1", (id_pedido,))
                     conexion.commit()
                 except oracledb.DatabaseError as err:
                     messagebox.showerror("Error", f"Error al eliminar el registro: {err}")
