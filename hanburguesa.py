@@ -3,13 +3,24 @@ import datetime
 from tkinter import ttk, messagebox  # Para mostrar mensajes de error
 from PIL import Image, ImageTk  # Pillow para manejar imágenes avanzadas
 from ttkthemes import ThemedTk
+import os
+import sys
 import oracledb
 #oracledb.init_oracle_client(r'C:\Users\pablo\Oracle Client\instantclient_19_25') #inicializar
 oracledb.init_oracle_client() #inicializar
 #================= ESTA ES LA UNICA COSA QUE VAN A CAMBIAR PARA LA DATABASE ============#
-passwd='108310'
+passwd='12345'
 schema='HR'
 #=======================================================================================#
+# Función para obtener la ruta de los recursos empaquetados
+def obtener_ruta_recurso(nombre_archivo):
+    if hasattr(sys, '_MEIPASS'):  # PyInstaller coloca los archivos aquí en el ejecutable
+        return os.path.join(sys._MEIPASS, nombre_archivo)
+    return os.path.join(os.path.abspath("."), nombre_archivo)
+
+# Cargar imágenes usando la ruta segura
+ruta_logo = obtener_ruta_recurso("logo.png")
+ruta_user = obtener_ruta_recurso("user.png")
 class hanburguesa:
     def __init__(self):
         self.inicio_de_sesion()
@@ -190,7 +201,7 @@ class hanburguesa:
         ventana.title("VENTAS E INSUMOS")
         ventana.geometry(f"400x500+{pos_x}+{pos_y}")
         ventana.resizable(False, False)
-
+        ventana.config(bg="#222226") 
         def cerrar_sesion(caso):
             match caso:
                 case 1:
@@ -804,5 +815,7 @@ class hanburguesa:
         boton_cerrar = tk.Button(nueva_ventana, text="Cerrar", font=("Arial", 14), command=cerrar_ventana)
         boton_cerrar.pack(pady=10)
         nueva_ventana.mainloop()
+    
+    
 if __name__ == "__main__":
     app=hanburguesa()
