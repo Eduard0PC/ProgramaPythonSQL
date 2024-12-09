@@ -1,12 +1,13 @@
 import tkinter as tk
+import datetime
 from tkinter import ttk, messagebox  # Para mostrar mensajes de error
 from PIL import Image, ImageTk  # Pillow para manejar imágenes avanzadas
 import oracledb
 #oracledb.init_oracle_client(r'C:\Users\pablo\Oracle Client\instantclient_19_25') #inicializar
 oracledb.init_oracle_client() #inicializar
 #================= ESTA ES LA UNICA COSA QUE VAN A CAMBIAR PARA LA DATABASE ============#
-passwd='DelfosData13'
-schema='TEST'
+passwd='108310'
+schema='HR'
 #=======================================================================================#
 class hanburguesa:
     def __init__(self):
@@ -43,12 +44,12 @@ class hanburguesa:
         else:
             cursor=conexion.cursor()
             queryT1=f'''CREATE TABLE {schema}.UsuariosNom (
-            id_usuario VARCHAR2(8) CONSTRAINT cv_usuario PRIMARY KEY, 
+            id_usuario VARCHAR2(32) CONSTRAINT cv_usuario PRIMARY KEY, 
             nombre_usuario VARCHAR(32) NOT NULL, 
             contrasenia VARCHAR2(32) NOT NULL)
             '''
             queryT2=f'''CREATE TABLE {schema}.UsuariosRol (
-            id_usuario VARCHAR2(8) CONSTRAINT cv_usuario_i REFERENCES {schema}.UsuariosNom(id_usuario), 
+            id_usuario VARCHAR2(32) CONSTRAINT cv_usuario_i REFERENCES {schema}.UsuariosNom(id_usuario), 
             rol CHAR(5) NOT NULL)
             '''
             queryT3=f'''CREATE TABLE {schema}.Insumos (
@@ -82,7 +83,7 @@ class hanburguesa:
             hora_pedido TIMESTAMP  WITH LOCAL TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL)
             '''
             queryS1=f'''
-            CREATE SECUENCE {schema}.INSUM_SEQ
+            CREATE SEQUENCE {schema}.INSUM_SEQ
             INCREMENT BY 1
             START WITH 1
             MINVALUE 1
@@ -352,6 +353,74 @@ class hanburguesa:
             tk.Button(nueva_ventana, text="AGREGAR",command=ingresar_insumo).pack(pady=15)
             tk.Button(nueva_ventana, text="Cerrar", command=nueva_ventana.destroy).pack(pady=15)
             nueva_ventana.mainloop()
+
+        def generar_id_unico():
+            # Obtiene la fecha y hora actuales
+            ahora = datetime.datetime.now()
+            # Formatea la fecha y hora en un número único
+            id_unico = ahora.strftime("%Y%m%d%H%M%S")  # Ejemplo: 20241208153045
+            return id_unico
+
+        def ventana_usuarios():
+            pos_x = ventana.winfo_x()
+            pos_y = ventana.winfo_y()
+            
+            nueva_ventana = tk.Tk()
+            nueva_ventana.title("Usuarios")
+            nueva_ventana.geometry(f"400x500+{pos_x}+{pos_y}")
+            
+            # Campos de entrada
+            tk.Label(nueva_ventana, text="Nombre de Usuario").pack(pady=5)
+            entrada_nom_usuario = tk.Entry(nueva_ventana, width=30)
+            entrada_nom_usuario.pack(pady=5)
+            
+            tk.Label(nueva_ventana, text="Rol").pack(pady=5)
+            selection_box = ttk.Combobox(nueva_ventana, values=["Admin", "User"], state="readonly", width=20)
+            selection_box.pack(pady=5)
+            selection_box.current(0)
+            
+            def ingresar_usuario():
+                nombre_usuario = entrada_nom_usuario.get()
+                id_usuario = generar_id_unico()  # Generar ID único basado en fecha/hora (8 caracteres)
+                contrasenia = generar_id_unico()[8:]  # Contraseña generada automáticamente
+                rol = selection_box.get()
+
+                conexion = self.obtener_conexion()
+                try:
+                    cursor = conexion.cursor()
+                    
+                    # Inserción en la tabla UsuariosNom
+                    query1 = f'''INSERT INTO {schema}.UsuariosNom (id_usuario, nombre_usuario, contrasenia)
+                                VALUES (:id_usuario, :nombre_usuario, :contrasenia)'''
+                    input1 = (id_usuario, nombre_usuario, contrasenia)
+                    cursor.execute(query1, input1)
+                    
+                    # Inserción en la tabla UsuariosRol
+                    query2 = f'''INSERT INTO {schema}.UsuariosRol (id_usuario, rol)
+                                VALUES (:id_usuario, :rol)'''
+                    input2 = (id_usuario, rol)
+                    cursor.execute(query2, input2)
+                    
+                    conexion.commit()
+                    messagebox.showinfo("Éxito", f"Usuario {nombre_usuario} con ID {id_usuario} y rol {rol} agregado correctamente.")
+                except Exception as err:
+                    messagebox.showerror("Error", f"Error al agregar usuario: {err}")
+                finally:
+                    conexion.close()
+
+            # Botones
+            tk.Button(nueva_ventana, text="Agregar Usuario", command=ingresar_usuario).pack(pady=15)
+            tk.Button(nueva_ventana, text="Ver usuarios", command=lambda:cerrar_sesion(4)).pack(pady=15)
+            tk.Button(nueva_ventana, text="Cerrar", command=nueva_ventana.destroy).pack(pady=15)
+
+            nueva_ventana.mainloop()
+
+                #Aqui pongo mi avance de insumos
+            tk.Button(nueva_ventana, text="USUARIOS", command=lambda:cerrar_sesion(4)).pack(pady=15)
+            tk.Button(nueva_ventana, text="AGREGAR",command=ingresar_usuario).pack(pady=15)
+            tk.Button(nueva_ventana, text="Cerrar", command=nueva_ventana.destroy).pack(pady=15)
+            nueva_ventana.mainloop()
+
         # Cargar la imagen de fondo
         try:
             imagen_fondo = Image.open("fondo.png").resize((400, 400), Image.Resampling.LANCZOS)
@@ -379,7 +448,7 @@ class hanburguesa:
         if self.getrol() == "Admin": 
             boton_insumos = tk.Button(ventana, text="INSUMOS", font=("Arial", 14), bg="black", fg="white", command=ventana_insumos)
             boton_insumos.place(relx=0.5, rely=0.80, anchor="center")
-            boton_insumos = tk.Button(ventana, text="Adm. us", font=("Arial", 10), bg="white", fg="black", command=lambda:cerrar_sesion(4))
+            boton_insumos = tk.Button(ventana, text="Adm. us", font=("Arial", 10), bg="white", fg="black", command=ventana_usuarios)
             boton_insumos.place(relx=0.1, rely=0.95, anchor="center")
         elif self.getrol() == "User":
             boton_insumos = tk.Button(ventana, text="INSUMOS", font=("Arial", 14), bg="black", fg="white", command=lambda:cerrar_sesion(2))
@@ -387,6 +456,7 @@ class hanburguesa:
         boton_ventas = tk.Button(ventana, text="CERRAR", font=("Arial", 14), bg="red", fg="black", command=lambda:cerrar_sesion(1))
         boton_ventas.place(relx=0.5, rely=0.90, anchor="center")
         ventana.mainloop()
+
     def abrir_inventario(self):
         # Crear nueva ventana
         nueva_ventana = tk.Tk()
@@ -521,13 +591,15 @@ class hanburguesa:
         frame_tabla.pack(fill="both", expand=True, padx=20, pady=20)
 
         # Mostrar datos
-        tree = ttk.Treeview(frame_tabla, columns=("id_usuario", "nombre_usuario", "rol"), show="headings", height=20)
+        tree = ttk.Treeview(frame_tabla, columns=("id_usuario", "nombre_usuario", "contrasenia", "rol"), show="headings", height=20)
         tree.heading("id_usuario", text="Código del usuario")
         tree.heading("nombre_usuario", text="Nombre del usuario")
+        tree.heading("contrasenia", text="Contraseña del usuario")
         tree.heading("rol", text="Rol del usuario")
         
         tree.column("id_usuario", width=300, anchor="center")
         tree.column("nombre_usuario", width=300, anchor="center")
+        tree.column("contrasenia", width=300, anchor="center")
         tree.column("rol", width=150, anchor="center")
 
         tree.pack(side="left", fill="both", expand=True)
@@ -551,7 +623,7 @@ class hanburguesa:
             try:
                 cursor = conexion.cursor()
                 query = f'''
-                SELECT u.id_usuario, u.nombre_usuario, r.rol
+                SELECT u.id_usuario, u.nombre_usuario, u.contrasenia, r.rol
                 FROM {schema}.UsuariosNom u
                 JOIN {schema}.UsuariosRol r ON u.id_usuario = r.id_usuario
                 WHERE LOWER(u.nombre_usuario) LIKE :filtro
@@ -565,7 +637,7 @@ class hanburguesa:
                 # Insertar datos en la tabla con colores según el rol
                 resultados = cursor.fetchall()
                 for fila in resultados:
-                    id_usuario, nombre_usuario, rol = fila
+                    id_usuario, nombre_usuario, contrasenia, rol = fila
                     if rol == "Admin":
                         tag = 'admin'
                     elif rol == "Emple":
@@ -619,8 +691,6 @@ class hanburguesa:
         #Boton para borrar registro de inventarios
         boton_eliminar = tk.Button(nueva_ventana, text="Eliminar usuario", font=("Arial", 14), command=eliminar_fila)
         boton_eliminar.pack(pady=10)
-        # Cargar los datos al abrir la ventana
-        cargar_datos()
         # Etiqueta y campo de búsqueda
         tk.Label(nueva_ventana, text="¿Qué desea buscar?").pack(pady=5)
         entry_busqueda = tk.Entry(nueva_ventana, width=30)
