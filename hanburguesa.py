@@ -535,7 +535,7 @@ class hanburguesa:
             finally:
                 conexion.close()
         # Función para manejar el evento de búsqueda
-        def buscar(): #???
+        def buscar(event=None): #???
             filtro = entry_busqueda.get()
             cargar_datos(filtro)
         def eliminar_fila():
@@ -653,7 +653,7 @@ class hanburguesa:
                     id_usuario, nombre_usuario, contrasenia, rol = fila
                     if rol == "Admin":
                         tag = 'admin'
-                    elif rol == "Emple":
+                    elif rol == "User":
                         tag = 'empleado'
                     tree.insert("", "end", values=fila, tags=(tag,))
             except Exception as err:
