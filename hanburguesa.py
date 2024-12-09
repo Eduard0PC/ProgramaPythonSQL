@@ -188,6 +188,8 @@ class hanburguesa:
                     self.abrir_inventario()
                 case 3:
                     self.abrir_ventas()
+                case 4:
+                    self.abrir_usuarios()
     # Función para abrir la ventana de Ventas
         def ventana_ventas():
             pos_x = ventana.winfo_x()
@@ -376,6 +378,8 @@ class hanburguesa:
         if self.getrol() == "Admin": 
             boton_insumos = tk.Button(ventana, text="INSUMOS", font=("Arial", 14), bg="black", fg="white", command=ventana_insumos)
             boton_insumos.place(relx=0.5, rely=0.80, anchor="center")
+            boton_insumos = tk.Button(ventana, text="Adm. us", font=("Arial", 10), bg="white", fg="black", command=lambda:cerrar_sesion(4))
+            boton_insumos.place(relx=0.1, rely=0.95, anchor="center")
         elif self.getrol() == "User":
             boton_insumos = tk.Button(ventana, text="INSUMOS", font=("Arial", 14), bg="black", fg="white", command=lambda:cerrar_sesion(2))
             boton_insumos.place(relx=0.5, rely=0.80, anchor="center")
