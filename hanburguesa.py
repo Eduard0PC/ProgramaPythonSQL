@@ -2,7 +2,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox  # Para mostrar mensajes de error
 from PIL import Image, ImageTk  # Pillow para manejar imágenes avanzadas
 import oracledb
-oracledb.init_oracle_client(r'C:\Users\pablo\Oracle Client\instantclient_19_25') #inicializar la tabla
+#oracledb.init_oracle_client(r'C:\Users\pablo\Oracle Client\instantclient_19_25') #inicializar
+oracledb.init_oracle_client() #inicializar
 #================= ESTA ES LA UNICA COSA QUE VAN A CAMBIAR PARA LA DATABASE ============#
 passwd='DelfosData13'
 schema='TEST'
