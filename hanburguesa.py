@@ -9,7 +9,7 @@ import oracledb
 #oracledb.init_oracle_client(r'C:\Users\pablo\Oracle Client\instantclient_19_25') #inicializar
 oracledb.init_oracle_client() #inicializar
 #================= ESTA ES LA UNICA COSA QUE VAN A CAMBIAR PARA LA DATABASE ============#
-passwd='12345'
+passwd='108310'
 schema='HR'
 #=======================================================================================#
 # Función para obtener la ruta de los recursos empaquetados
@@ -474,10 +474,10 @@ class hanburguesa:
             boton_insumos.place(relx=0.5, rely=0.80, anchor="center")
             boton_insumos = tk.Button(ventana, text="Adm. us", font=("Arial", 10), bg="white", fg="black", command=ventana_usuarios)
             boton_insumos.place(relx=0.1, rely=0.95, anchor="center")
-        elif self.getrol() == "User":
+        elif self.getrol() == "User ":
             boton_insumos = tk.Button(ventana, text="INSUMOS", font=("Arial", 14), bg="black", fg="white", command=lambda:cerrar_sesion(2))
             boton_insumos.place(relx=0.5, rely=0.80, anchor="center")
-        boton_ventas = tk.Button(ventana, text="CERRAR", font=("Arial", 14), bg="red", fg="black", command=lambda:cerrar_sesion(1))
+        boton_ventas = tk.Button(ventana, text="LogOut", font=("Arial", 14), bg="red", fg="black", command=lambda:cerrar_sesion(1))
         boton_ventas.place(relx=0.5, rely=0.90, anchor="center")
         ventana.mainloop()
 
