@@ -4,7 +4,7 @@ from PIL import Image, ImageTk  # Pillow para manejar imágenes avanzadas
 import oracledb
 oracledb.init_oracle_client(r'C:\Users\pablo\Oracle Client\instantclient_19_25') #inicializar la tabla
 #================= ESTA ES LA UNICA COSA QUE VAN A CAMBIAR PARA LA DATABASE ============#
-passwd='Screwedup'
+passwd='DelfosData13'
 schema='TEST'
 #=======================================================================================#
 class hanburguesa:
@@ -20,9 +20,9 @@ class hanburguesa:
         return self.us
     def getrol(self):
         return self.rol
-    def mostrar_error(mensaje):
+    def mostrar_error(self, mensaje):
         messagebox.showerror("Error", mensaje)
-     #Obtener coneccion a la base
+    #Obtener coneccion a la base
     def obtener_conexion(self):
         try:
             conexion = oracledb.connect(
@@ -40,74 +40,83 @@ class hanburguesa:
         if conexion is None:
             return
         else:
-            try:
-                cursor=conexion.cursor()
-                queryT1=f'''CREATE TABLE {schema}.UsuariosNom (
-                id_usuario VARCHAR2(8) CONSTRAINT cv_usuario PRIMARY KEY, 
-                nombre_usuario VARCHAR(32) NOT NULL, 
-                contrasenia VARCHAR(32) NOT NULL)
-                '''
-                queryT2=f'''CREATE TABLE {schema}.UsuariosRol (
-                id_usuario VARCHAR2(8) CONSTRAINT cv_usuario_i REFERENCES {schema}.UsuariosNom(id_usuario), 
-                rol CHAR(5) NOT NULL)
-                '''
-                queryT3=f'''CREATE TABLE {schema}.Insumos (
-                id_insumo VARCHAR2(12) CONSTRAINT cv_insumo PRIMARY KEY,
-                nombre_insumo VARCHAR(10) UNIQUE,
-                unidad_medida CHAR(2) NOT NULL)
-                '''
-                queryT4=f'''CREATE TABLE {schema}.VencInsumos (
-                id_insumo VARCHAR2(12) NOT NULL,
-                caducidad DATE NOT NULL,
-                cantidad NUMBER(8) NOT NULL,
-                PRIMARY KEY (id_insumo, caducidad), 
-                CONSTRAINT cvi_insumo_i FOREIGN KEY(id_insumo) REFERENCES {schema}.Insumos(id_insumo))
-                '''
-                queryT5=f'''CREATE TABLE {schema}.Alimentos (
-                id_alimento VARCHAR2(12) CONSTRAINT cv_alimento PRIMARY KEY, 
-                nombre_alimento VARCHAR(10) NOT NULL, 
-                precio NUMBER(8,2) NOT NULL)
-                '''
-                queryT6=f'''CREATE TABLE {schema}.Pedidos (
-                id_pedido VARCHAR(12) CONSTRAINT cv_pedido_i REFERENCES {schema}.PedidoDetalles(id_pedido),
-                id_alimento VARCHAR2(12) CONSTRAINT cv_alimento_i REFERENCES {schema}.Alimentos(id_alimento), 
-                cantidad_alimento NUMBER(5) NOT NULL, 
-                total_pedido NUMBER(8,2) NOT NULL,
-                direccion VARCHAR(72) NOT NULL,
-                nombre_cliente VARCHAR(24) NOT NULL)
-                '''
-                queryT7=f'''CREATE TABLE {schema}.PedidoDetalles (
-                id_pedido VARCHAR(12) CONSTRAINT cv_pedido PRIMARY KEY,
-                fecha_pedido DATE NOT DEFAULT SYSDATE NULL,
-                hora_pedido TIMESTAMP  WITH LOCAL TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL)
-                '''
-                queryS1=f'''
-                CREATE SECUENCE {schema}.INSUM_SEQ
-                INCREMENT BY 1
-                START WITH 1
-                MINVALUE 1
-                '''
-                #Usuarios
-                cursor.execute(queryT1)
-                cursor.execute(queryT2)
-                #Insumos
-                cursor.execute(queryT3)
-                cursor.execute(queryT4)
-                #Alimentos
-                cursor.execute(queryT5)
-                #PedidosDetalles
-                cursor.execute(queryT7)
-                #RelacionPedidos
-                cursor.execute(queryT6)
-                cursor.execute(queryS1)
-                conexion.commit()
-            except oracledb.DatabaseError as e:
-                if "ORA-00955" in str(e):
+            cursor=conexion.cursor()
+            queryT1=f'''CREATE TABLE {schema}.UsuariosNom (
+            id_usuario VARCHAR2(8) CONSTRAINT cv_usuario PRIMARY KEY, 
+            nombre_usuario VARCHAR(32) NOT NULL, 
+            contrasenia VARCHAR2(32) NOT NULL)
+            '''
+            queryT2=f'''CREATE TABLE {schema}.UsuariosRol (
+            id_usuario VARCHAR2(8) CONSTRAINT cv_usuario_i REFERENCES {schema}.UsuariosNom(id_usuario), 
+            rol CHAR(5) NOT NULL)
+            '''
+            queryT3=f'''CREATE TABLE {schema}.Insumos (
+            id_insumo VARCHAR2(12) CONSTRAINT cv_insumo PRIMARY KEY,
+            nombre_insumo VARCHAR(10) UNIQUE,
+            unidad_medida CHAR(2) NOT NULL)
+            '''
+            queryT4=f'''CREATE TABLE {schema}.VencInsumos (
+            id_insumo VARCHAR2(12) NOT NULL,
+            caducidad DATE NOT NULL,
+            cantidad NUMBER(8) NOT NULL,
+            PRIMARY KEY (id_insumo, caducidad), 
+            CONSTRAINT cvi_insumo_i FOREIGN KEY(id_insumo) REFERENCES {schema}.Insumos(id_insumo))
+            '''
+            queryT5=f'''CREATE TABLE {schema}.Alimentos (
+            id_alimento VARCHAR2(12) CONSTRAINT cv_alimento PRIMARY KEY, 
+            nombre_alimento VARCHAR(10) NOT NULL, 
+            precio NUMBER(8,2) NOT NULL)
+            '''
+            queryT6=f'''CREATE TABLE {schema}.Pedidos (
+            id_pedido VARCHAR(12) CONSTRAINT cv_pedido_i REFERENCES {schema}.PedidoDetalles(id_pedido),
+            id_alimento VARCHAR2(12) CONSTRAINT cv_alimento_i REFERENCES {schema}.Alimentos(id_alimento), 
+            cantidad_alimento NUMBER(5) NOT NULL, 
+            total_pedido NUMBER(8,2) NOT NULL,
+            direccion VARCHAR(72) NOT NULL,
+            nombre_cliente VARCHAR(24) NOT NULL)
+            '''
+            queryT7=f'''CREATE TABLE {schema}.PedidoDetalles (
+            id_pedido VARCHAR(12) CONSTRAINT cv_pedido PRIMARY KEY,
+            fecha_pedido DATE NOT DEFAULT SYSDATE NULL,
+            hora_pedido TIMESTAMP  WITH LOCAL TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL)
+            '''
+            queryS1=f'''
+            CREATE SECUENCE {schema}.INSUM_SEQ
+            INCREMENT BY 1
+            START WITH 1
+            MINVALUE 1
+            '''
+            queryS2=f'''
+            CREATE SEQUENCE {schema}.USER_SEQ
+            INCREMENT BY 1
+            START WITH 1
+            MINVALUE 1
+            '''
+            setadmin1=f'''INSERT INTO {schema}.UsuariosNom(id_usuario, nombre_usuario, contrasenia) VALUES ('0','ADMIN','hambre2024')'''
+            setadmin2=f'''INSERT INTO {schema}.UsuariosRol(id_usuario, rol) VALUES ('0','Admin')'''
+            querys=[queryT1,queryT2,queryT3,queryT4,queryT5,queryT7,queryT6,queryS1,queryS2]
+            #Generar esquema
+            for query in querys:
+                try:
+                    cursor.execute(query)
+                except oracledb.DatabaseError as e:
                     pass
-            finally:
-                cursor.close()
-                conexion.close()
+            #Setup admin
+            try:
+                #Comprueba que la ID existe
+                cursor.execute(f'''SELECT id_usuario FROM {schema}.UsuariosRol WHERE id_usuario='0' ''')
+                exists=cursor.fetchone
+                if exists: #Solo si no existe
+                    cursor.execute(setadmin1)
+                    cursor.execute(setadmin2)
+            except oracledb.DatabaseError as e:
+                pass
+            conexion.commit()
+            cursor.close()
+            conexion.close()
     def inicio_de_sesion(self):
+        #Inicializar la base de datos
+        self.instalardb()
         # Ventana de inicio de sesión
         ventana_login = tk.Tk()
         ventana_login.title("Inicio de Sesión")
@@ -134,10 +143,10 @@ class hanburguesa:
 
                     # Consulta para validar credenciales y obtener el rol del usuario
                     query = f'''
-                        SELECT UN.id_usuario, UR.rol
-                        FROM {schema}.UsuariosNom UN
-                        JOIN {schema}.UsuariosRol UR ON UN.id_usuario = UR.id_usuario
-                        WHERE UN.nombre_usuario = :usuario AND UN.contrasenia = :contrasena
+                    SELECT UN.id_usuario, UR.rol
+                    FROM {schema}.UsuariosNom UN
+                    JOIN {schema}.UsuariosRol UR ON UN.id_usuario = UR.id_usuario
+                    WHERE UN.nombre_usuario =:usuario AND UN.contrasenia =:contrasena
                     '''
                     cursor.execute(query, {"usuario": usuario, "contrasena": contrasena})
                     resultado = cursor.fetchone()
@@ -157,7 +166,6 @@ class hanburguesa:
             # Llamamos a cargar_datos para realizar la validación
             cargar_datos()
         tk.Button(ventana_login, text="Iniciar Sesión", command=validar_credenciales).pack(pady=20)
-        self.instalardb()
         ventana_login.mainloop()
     # Función para abrir la ventana principal después del inicio de sesión exitoso
     def abrir_ventana_principal(self, ventana_login):
@@ -534,8 +542,7 @@ class hanburguesa:
             """
             conexion = self.obtener_conexion()
             if conexion is None:
-                return  
-            
+                return    
             try:
                 cursor = conexion.cursor()
                 query = f'''
@@ -563,9 +570,8 @@ class hanburguesa:
                 messagebox.showerror("Error", f"Error al ejecutar la consulta: {err}")
             finally:
                 conexion.close()
-
         # Función para manejar el evento de búsqueda
-        def buscar(event):
+        def buscar():
             filtro = entry_busqueda.get()
             cargar_datos(filtro)
 
@@ -595,8 +601,7 @@ class hanburguesa:
                     messagebox.showerror("Error", f"Error al eliminar el registro: {err}")
                     return
                 finally:
-                    conexion.close()
-                
+                    conexion.close()                
                 # Eliminar la fila del Treeview
                 tree.delete(seleccion)
                 messagebox.showinfo("Éxito", f"Registro con ID {id_usuario} eliminado correctamente.")
@@ -606,20 +611,16 @@ class hanburguesa:
 
         # Cargar los datos al abrir la ventana
         cargar_datos()
-
         #Boton para borrar registro de inventarios
         boton_eliminar = tk.Button(nueva_ventana, text="Eliminar usuario", font=("Arial", 14), command=eliminar_fila)
         boton_eliminar.pack(pady=10)
-
         # Cargar los datos al abrir la ventana
         cargar_datos()
-
         # Etiqueta y campo de búsqueda
         tk.Label(nueva_ventana, text="¿Qué desea buscar?").pack(pady=5)
         entry_busqueda = tk.Entry(nueva_ventana, width=30)
         entry_busqueda.pack(pady=5)
         entry_busqueda.bind("<KeyRelease>", buscar)  # Vincula el evento de teclado con la función buscar
-
         # Botón para cerrar la ventana
         boton_cerrar = tk.Button(nueva_ventana, text="Cerrar", font=("Arial", 14), command=nueva_ventana.destroy)
         boton_cerrar.pack(pady=10)
