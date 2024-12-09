@@ -2,6 +2,7 @@ import tkinter as tk
 import datetime
 from tkinter import ttk, messagebox  # Para mostrar mensajes de error
 from PIL import Image, ImageTk  # Pillow para manejar imágenes avanzadas
+from ttkthemes import ThemedTk
 import oracledb
 #oracledb.init_oracle_client(r'C:\Users\pablo\Oracle Client\instantclient_19_25') #inicializar
 oracledb.init_oracle_client() #inicializar
@@ -120,10 +121,19 @@ class hanburguesa:
         #Inicializar la base de datos
         self.instalardb()
         # Ventana de inicio de sesión
-        ventana_login = tk.Tk()
+        ventana_login = ThemedTk(theme="black")
         ventana_login.title("Inicio de Sesión")
-        ventana_login.geometry("300x200")
+        ventana_login.geometry("300x320")
         ventana_login.resizable(False, False)
+        
+        try:
+            imagen_logo = Image.open("user.png").resize((100, 100), Image.Resampling.LANCZOS)  # Ajusta el tamaño según sea necesario
+            logo = ImageTk.PhotoImage(imagen_logo)
+            logo_label = tk.Label(ventana_login, image=logo, bg="#f0f0f0")  # Cambié Label a tk.Label
+            logo_label.pack(pady=10)  # Centra la imagen en la parte superior
+        except Exception as e:
+            print(f"Error al cargar la imagen: {e}")
+        
         #Etiquetas y campos de entrada
         tk.Label(ventana_login, text="Usuario:").pack(pady=5)
         entrada_usuario = tk.Entry(ventana_login, width=30)
@@ -421,6 +431,7 @@ class hanburguesa:
             tk.Button(nueva_ventana, text="Cerrar", command=nueva_ventana.destroy).pack(pady=15)
             nueva_ventana.mainloop()
 
+        '''
         # Cargar la imagen de fondo
         try:
             imagen_fondo = Image.open("fondo.png").resize((400, 400), Image.Resampling.LANCZOS)
@@ -428,6 +439,10 @@ class hanburguesa:
         except Exception as e:
             self.mostrar_error(f"No se pudo cargar el fondo: {e}")
             fondo = None
+        if fondo:
+            fondo_label = tk.Label(ventana, image=fondo)
+            fondo_label.place(x=0, y=0, relwidth=1, relheight=1)
+        '''
         # Cargar el logo
         try:
             imagen_logo = Image.open("logo.png").resize((200, 200), Image.Resampling.LANCZOS)
@@ -435,15 +450,13 @@ class hanburguesa:
         except Exception as e:
             self.mostrar_error(f"No se pudo cargar el logo: {e}")
             logo = None
-        if fondo:
-            fondo_label = tk.Label(ventana, image=fondo)
-            fondo_label.place(x=0, y=0, relwidth=1, relheight=1)
         if logo:
-            logo_label = tk.Label(ventana, image=logo)
+            logo_label = tk.Label(ventana, image=logo, bg="#222226")  
             logo_label.place(relx=0.5, rely=0.35, anchor="center")  # Centrado un poco más arriba
         # Botón de Ventas
         boton_ventas = tk.Button(ventana, text="VENTAS", font=("Arial", 14), bg="white", fg="black", command=ventana_ventas)
         boton_ventas.place(relx=0.5, rely=0.70, anchor="center")
+        
         # Botón de Insumos
         if self.getrol() == "Admin": 
             boton_insumos = tk.Button(ventana, text="INSUMOS", font=("Arial", 14), bg="black", fg="white", command=ventana_insumos)
